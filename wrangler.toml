@@ -1,0 +1,23 @@
+name = "unspsc-lookup-api"
+compatibility_date = "2024-09-06"
+compatibility_flags = [ "nodejs_compat" ]
+workers_dev = true
+
+# [vars]
+# MY_VAR = "my-variable"
+
+# [[kv_namespaces]]
+# binding = "MY_KV_NAMESPACE"
+# id = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+# [[r2_buckets]]
+# binding = "MY_BUCKET"
+# bucket_name = "my-bucket"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "unspsc-lookup"
+database_id = "1bdc256f-a0c9-416e-b595-c04844538df7"
+
+# [ai]
+# binding = "AI"
