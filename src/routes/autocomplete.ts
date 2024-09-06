@@ -1,32 +1,49 @@
-import { Hono } from "hono";
+import { Context, Hono } from "hono";
 import { z } from "zod";
+import { or, like } from "drizzle-orm";
+
+import type { Environment } from "../../env";
 import { unspscCodes } from "../db/schema";
 import db from "../db";
 
-export const autocompleteRoutes = new Hono();
+// Autocomplete routes
+export const autocompleteRoutes = new Hono<Environment>();
 
-/**
- * Database provider middleware
- */
+// Database provider middleware
 autocompleteRoutes.use(async (c, next) => db(c, next));
 
-// Autocomplete
-autocompleteRoutes.get("/:query", async (c) => {
-  const { query } = z.object({ query: z.string().min(1) }).parse(c.req.param());
+// Add pagination parameters in the autocomplete schema
+const autocompleteSchema = z.object({
+  query: z.string().min(1),
+  page: z.number().min(1).default(1),
+  pageSize: z.number().min(1).max(100).default(20),
+});
 
-  const result = await db
+// Autocomplete
+autocompleteRoutes.get("/:query", async (c: Context) => {
+  const autocomplete = autocompleteSchema.parse(c.req.param());
+  const offset = (autocomplete.page - 1) * autocomplete.pageSize;
+
+  const result = await c.var.db
     .select()
     .from(unspscCodes)
-    .where((tbl) =>
-      tbl.segment_name
-        .like(`%${query}%`)
-        .or(tbl.family_name.like(`%${query}%`))
-        .or(tbl.class_name.like(`%${query}%`))
-        .or(tbl.commodity_name.like(`%${query}%`))
+    .where(
+      or(
+        like(unspscCodes.segment_name, `${autocomplete.query}%`),
+        like(unspscCodes.family_name, `${autocomplete.query}%`),
+        like(unspscCodes.class_name, `${autocomplete.query}%`),
+        like(unspscCodes.commodity_name, `${autocomplete.query}%`)
+      )
     )
-    .limit(5);
+    .limit(autocomplete.pageSize)
+    .offset(offset);
 
-  return c.json(result);
+  return c.json({
+    data: result,
+    page: autocomplete.page,
+    pageSize: autocomplete.pageSize,
+    total: result.length,
+  });
 });
 
 export default autocompleteRoutes;

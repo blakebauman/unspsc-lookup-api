@@ -1,43 +1,61 @@
-import { Hono } from "hono";
+import { Context, Hono } from "hono";
 import { z } from "zod";
+import { like, or } from "drizzle-orm";
+
+import type { Environment } from "../../env";
 import { unspscCodes } from "../db/schema";
-import { D1Database } from "@cloudflare/workers-types";
 import db from "../db";
 
-export const searchRoutes = new Hono();
+// Search routes
+export const searchRoutes = new Hono<Environment>();
 
-/**
- * Database provider middleware
- */
-searchRoutes.use(async (c, next) => db(c, next));
+// Database provider middleware
+searchRoutes.use(async (c, next) => await db(c, next));
 
+// Code validation
 const codeValidation = z
   .string()
   .regex(/^\d{2,8}$/, "Code must be between 2 and 8 digits");
 
+// Search schema
+const searchNumberSchema = z.object({
+  code: codeValidation, // Code must be between 2 and 8 digits
+  page: z.number().min(1).default(1),
+  pageSize: z.number().min(1).max(100).default(20),
+});
+
+// Search schema
+const searchNameSchema = z.object({
+  name: z.string().min(1),
+  page: z.number().min(1).default(1),
+  pageSize: z.number().min(1).max(100).default(20),
+});
+
 // Search by code number
-searchRoutes.get("/number/:code", async (c) => {
-  const params = z.object({ code: codeValidation }).safeParse(ctx.req.param());
+searchRoutes.get("/number/:code", async (c: Context) => {
+  console.log(`Received request to search for code: ${c.req.param("code")}`);
+  const params = searchNumberSchema.safeParse(c.req.param());
 
   if (!params.success) {
     return c.json({ error: params.error.message }, 400);
   }
 
-  const { code } = z
-    .object({ code: z.string().min(2).max(8) })
-    .parse(c.req.param());
+  const { code, page, pageSize } = searchNumberSchema.parse(c.req.param());
+  const offset = (page - 1) * pageSize;
 
   const result = await c.var.db
     .select()
     .from(unspscCodes)
-    .where((tbl) =>
-      tbl.segment
-        .like(`${code}%`)
-        .or(tbl.family.like(`${code}%`))
-        .or(tbl.class.like(`${code}%`))
-        .or(tbl.commodity.like(`${code}%`))
+    .where(
+      or(
+        like(unspscCodes.segment, `${code}%`),
+        like(unspscCodes.family, `${code}%`),
+        like(unspscCodes.class, `${code}%`),
+        like(unspscCodes.commodity, `${code}%`)
+      )
     )
-    .limit(20);
+    .limit(pageSize)
+    .offset(offset);
 
   if (result.length === 0) {
     return c.json({ message: "No results found" }, 404);
@@ -47,28 +65,29 @@ searchRoutes.get("/number/:code", async (c) => {
 });
 
 // Search by code name
-searchRoutes.get("/name/:name", async (ctx) => {
-  const { name } = z.object({ name: z.string().min(1) }).parse(ctx.req.param());
+searchRoutes.get("/name/:name", async (c: Context) => {
+  const { name, page, pageSize } = searchNameSchema.parse(c.req.param());
+  const offset = (page - 1) * pageSize;
 
-  const db = drizzle(ctx.env.DB as D1Database);
-
-  const result = await db
+  const result = await c.var.db
     .select()
     .from(unspscCodes)
-    .where((tbl) =>
-      tbl.segment_name
-        .like(`%${name}%`)
-        .or(tbl.family_name.like(`%${name}%`))
-        .or(tbl.class_name.like(`%${name}%`))
-        .or(tbl.commodity_name.like(`%${name}%`))
+    .where(
+      or(
+        like(unspscCodes.segment_name, `${name}%`),
+        like(unspscCodes.family_name, `${name}%`),
+        like(unspscCodes.class_name, `${name}%`),
+        like(unspscCodes.commodity_name, `${name}%`)
+      )
     )
-    .limit(20);
+    .limit(pageSize)
+    .offset(offset);
 
   if (result.length === 0) {
-    return ctx.json({ message: "No results found" }, 404);
+    return c.json({ message: "No results found" }, 404);
   }
 
-  return ctx.json(result);
+  return c.json(result);
 });
 
 export default searchRoutes;
