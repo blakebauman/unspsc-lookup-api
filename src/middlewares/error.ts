@@ -1,10 +1,10 @@
 import { Context } from "hono";
 
-export const errorHandler = async (ctx: Context, next: () => Promise<void>) => {
+export const errorHandler = async (c: Context, next: () => Promise<void>) => {
   try {
     await next();
   } catch (err) {
     console.error("Error occurred:", err);
-    ctx.json({ error: "Internal Server Error" }, 500);
+    c.json({ error: "Internal Server Error" }, 500);
   }
 };

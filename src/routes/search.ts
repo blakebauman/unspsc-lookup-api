@@ -34,10 +34,10 @@ const searchNameSchema = z.object({
 // Search by code number
 searchRoutes.get("/number/:code", async (c: Context) => {
   console.log(`Received request to search for code: ${c.req.param("code")}`);
-  const params = searchNumberSchema.safeParse(c.req.param());
+  const validation = searchNumberSchema.safeParse(c.req.param());
 
-  if (!params.success) {
-    return c.json({ error: params.error.message }, 400);
+  if (!validation.success) {
+    return c.json({ error: validation.error.message }, 400);
   }
 
   const { code, page, pageSize } = searchNumberSchema.parse(c.req.param());

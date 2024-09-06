@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { integer, text, sqliteTable, index } from "drizzle-orm/sqlite-core";
 
 // Define the UNSPSC table schema
@@ -19,5 +20,24 @@ export const unspscCodes = sqliteTable(
     familyIndex: index("family_index").on(unspscCodes.family),
     classIndex: index("class_index").on(unspscCodes.class),
     commodityIndex: index("commodity_index").on(unspscCodes.commodity),
+    segmentFamilyIndex: index("segment_family_index").on(
+      unspscCodes.segment,
+      unspscCodes.family
+    ),
   })
 );
+
+export const searchAnalytics = sqliteTable("search_analytics", {
+  id: integer("id").primaryKey(),
+  code: text("code").notNull(),
+  search_count: integer("search_count").notNull(),
+});
+
+export const errorAnalytics = sqliteTable("error_analytics", {
+  id: integer("id").primaryKey(),
+  error_message: text("error_message").notNull(),
+  error_count: integer("error_count").notNull(),
+  timestamp: integer("timestamp", { mode: "timestamp" })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+});

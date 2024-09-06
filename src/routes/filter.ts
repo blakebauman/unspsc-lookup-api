@@ -25,7 +25,17 @@ const filterSchema = z.object({
 
 // Filter by segment/family/class/commodity
 filterRoutes.post("/", async (c: Context) => {
-  const filter = filterSchema.parse(await c.req.json());
+  const body = await c.req.json();
+  const validation = filterSchema.safeParse(body);
+
+  if (!validation.success) {
+    return c.json(
+      { error: "Invalid filter request: " + validation.error.message },
+      400
+    );
+  }
+
+  const filter = filterSchema.parse(body);
   const offset = (filter.page - 1) * filter.pageSize;
 
   let query = c.var.db
