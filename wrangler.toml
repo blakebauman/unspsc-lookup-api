@@ -1,5 +1,5 @@
 name = "unspsc-lookup-api"
-compatibility_date = "2024-09-06"
+compatibility_date = "2024-08-21"
 compatibility_flags = [ "nodejs_compat" ]
 workers_dev = true
 

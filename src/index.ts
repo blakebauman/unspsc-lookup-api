@@ -20,7 +20,7 @@ const app = new Hono<Environment>();
 /**
  * Rate limiting middleware
  */
-app.use(rateLimit);
+// app.use(rateLimit);
 
 /**
  * Error handler middleware
@@ -46,25 +46,10 @@ app.use(async (c, next) => await db(c, next));
  * Search API routes
  */
 app.route("/api/search", searchRoutes);
-
-/**
- * Bulk search API routes
- */
-app.route("/api/bulk-search", bulkSearchRoutes);
-
-/**
- * Autocomplete API routes
- */
-app.route("/api/autocomplete", autocompleteRoutes);
-
-/**
- * Filter API routes
- */
+// app.route("/api/bulk-search", bulkSearchRoutes);
+// app.route("/api/autocomplete", autocompleteRoutes);
 app.route("/api/filter", filterRoutes);
 
-/**
- * 404 handler
- */
 app.notFound(async (c) => c.text("You are lost!", 404));
 
 export default app;

@@ -1,5 +1,5 @@
 import { Context, Hono } from "hono";
-import { inArray, or, like } from "drizzle-orm";
+import { inArray, or } from "drizzle-orm";
 import { D1Database } from "@cloudflare/workers-types";
 import { z } from "zod";
 
@@ -38,14 +38,7 @@ bulkSearchRoutes.post("/bulk-search", async (c: Context) => {
     .select()
     .from(unspscCodes)
     //   .where(inArray(unspscCodes.code, [codes]));
-    .where(
-      or(
-        inArray(unspscCodes.segment_name, [codes]),
-        inArray(unspscCodes.family_name, `${name}%`),
-        inArray(unspscCodes.class_name, `${name}%`),
-        inArray(unspscCodes.commodity_name, `${name}%`)
-      )
-    );
+    .where(or(inArray(unspscCodes.segmentName, [codes])));
 
   // If no results found, return a not found message
   if (!results.length) {

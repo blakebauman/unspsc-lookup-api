@@ -19,7 +19,7 @@ const autocompleteSchema = z.object({
   pageSize: z.number().min(1).max(100).default(20),
 });
 
-// Autocomplete
+// Keyword autocomplete API
 autocompleteRoutes.get("/:query", async (c: Context) => {
   const autocomplete = autocompleteSchema.parse(c.req.param());
   const offset = (autocomplete.page - 1) * autocomplete.pageSize;
@@ -29,10 +29,10 @@ autocompleteRoutes.get("/:query", async (c: Context) => {
     .from(unspscCodes)
     .where(
       or(
-        like(unspscCodes.segment_name, `${autocomplete.query}%`),
-        like(unspscCodes.family_name, `${autocomplete.query}%`),
-        like(unspscCodes.class_name, `${autocomplete.query}%`),
-        like(unspscCodes.commodity_name, `${autocomplete.query}%`)
+        like(unspscCodes.segmentName, `${autocomplete.query}%`),
+        like(unspscCodes.familyName, `${autocomplete.query}%`),
+        like(unspscCodes.className, `${autocomplete.query}%`),
+        like(unspscCodes.commodityName, `${autocomplete.query}%`)
       )
     )
     .limit(autocomplete.pageSize)
