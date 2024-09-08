@@ -77,7 +77,8 @@ class SearchService {
     if (classCode) query = query.where(eq(unspscCodes.class, classCode));
 
     // Apply pagination
-    return await query.limit(limit).offset(offset);
+    // return await query.limit(limit).offset(offset);
+    return await query;
   }
 }
 
