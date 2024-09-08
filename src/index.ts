@@ -1,8 +1,6 @@
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import { searchRoutes } from "./routes/search";
-import { bulkSearchRoutes } from "./routes/bulkSearch";
-import { filterRoutes } from "./routes/filter";
-import { autocompleteRoutes } from "./routes/autocomplete";
 
 import { apiKeyAuth } from "./middlewares/auth";
 import { cacheMiddleware } from "./middlewares/cache";
@@ -18,6 +16,11 @@ import db from "./db";
 const app = new Hono<Environment>();
 
 /**
+ * CORS middleware
+ */
+app.use(cors());
+
+/**
  * Rate limiting middleware
  */
 // app.use(rateLimit);
@@ -30,7 +33,7 @@ app.use(errorHandler);
 /**
  * API key authentication middleware
  */
-app.use(apiKeyAuth);
+// app.use(apiKeyAuth);
 
 /**
  * Cache middleware
@@ -46,10 +49,10 @@ app.use(async (c, next) => await db(c, next));
  * Search API routes
  */
 app.route("/api/search", searchRoutes);
-// app.route("/api/bulk-search", bulkSearchRoutes);
-// app.route("/api/autocomplete", autocompleteRoutes);
-app.route("/api/filter", filterRoutes);
 
+/**
+ * 404 handler
+ */
 app.notFound(async (c) => c.text("You are lost!", 404));
 
 export default app;

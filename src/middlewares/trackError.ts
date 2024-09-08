@@ -1,12 +1,9 @@
-import { HonoContext } from "hono";
+import { Context } from "hono";
 import { drizzle } from "drizzle-orm";
 import { errorAnalytics } from "../db/schema";
 import { D1Database } from "@cloudflare/workers-types";
 
-export const trackError = async (
-  ctx: HonoContext,
-  next: () => Promise<void>
-) => {
+export const trackError = async (ctx: Context, next: () => Promise<void>) => {
   try {
     await next();
   } catch (err) {

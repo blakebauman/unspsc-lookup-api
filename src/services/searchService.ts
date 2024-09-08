@@ -1,7 +1,7 @@
 // src/services/searchService.ts
 import { Context, Hono } from "hono";
 import { z } from "zod";
-import { like, or, eq, and } from "drizzle-orm";
+import { like, or, eq, and, asc } from "drizzle-orm";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
 import { unspscCodes, unspscVersions } from "../db/schema";
 
@@ -18,54 +18,66 @@ interface SearchServiceModel {
 }
 
 class SearchService {
-  // Get UNSPSC codes by number
-  async getByNumber(
+  // Get UNSPSC codes by query
+  async getUnspscCodesByQuery(
     c: Context,
-    code: string,
+    query: string,
     selectedVersion: string,
-    pageSize: number,
-    offset: number
+    pageSize: string | number,
+    offset: string | number
   ) {
-    return await c.var.db
+    let searchQuery = c.var.db
       .select()
       .from(unspscCodes)
-      .leftJoin(unspscVersions, eq(unspscVersions.id, unspscCodes.version))
-      .where(
+      .leftJoin(unspscVersions, eq(unspscVersions.id, unspscCodes.version));
+
+    if (/^-?\d+$/.test(query)) {
+      searchQuery.where(
         or(
-          like(unspscCodes.segment, `${code}%`),
-          like(unspscCodes.family, `${code}%`),
-          like(unspscCodes.class, `${code}%`),
-          like(unspscCodes.commodity, `${code}%`)
+          like(unspscCodes.segment, `${query}%`),
+          like(unspscCodes.family, `${query}%`),
+          like(unspscCodes.class, `${query}%`),
+          like(unspscCodes.commodity, `${query}%`)
         ),
         and(eq(unspscCodes.version, selectedVersion))
-      )
-      .limit(pageSize)
-      .offset(offset);
+      );
+    } else {
+      searchQuery.where(
+        or(
+          like(unspscCodes.segmentName, `%${query}%`),
+          like(unspscCodes.familyName, `%${query}%`),
+          like(unspscCodes.className, `%${query}%`),
+          like(unspscCodes.commodityName, `%${query}%`)
+        ),
+        and(eq(unspscCodes.version, selectedVersion))
+      );
+    }
+
+    return await searchQuery.limit(pageSize).offset(offset);
   }
 
-  // Get UNSPSC codes by name
-  async getByName(
+  async getUnspscCodesHierarchy(
     c: Context,
-    name: string,
     selectedVersion: string,
-    pageSize: number,
-    offset: number
+    segment?: string,
+    family?: string,
+    classCode?: string | null,
+    limit?: string | number,
+    offset?: string | number
   ) {
-    return await await c.var.db
+    let query = c.var.db
       .select()
       .from(unspscCodes)
       .leftJoin(unspscVersions, eq(unspscVersions.id, unspscCodes.version))
-      .where(
-        or(
-          like(unspscCodes.segmentName, `%${name}%`),
-          like(unspscCodes.familyName, `%${name}%`),
-          like(unspscCodes.className, `%${name}%`),
-          like(unspscCodes.commodityName, `%${name}%`)
-        ),
-        and(eq(unspscCodes.version, selectedVersion))
-      )
-      .limit(pageSize)
-      .offset(offset);
+      .where(eq(unspscVersions.version, selectedVersion));
+
+    // Apply optional filters
+    if (segment) query = query.where(eq(unspscCodes.segment, segment));
+    if (family) query = query.where(eq(unspscCodes.family, family));
+    if (classCode) query = query.where(eq(unspscCodes.class, classCode));
+
+    // Apply pagination
+    return await query.limit(limit).offset(offset);
   }
 }
 

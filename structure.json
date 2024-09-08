@@ -1,0 +1,20 @@
+{
+  "42": {
+    "segment_name": "Medical Equipment and Accessories and Supplies",
+    "families": {
+      "1819": {
+        "family_name": "Medical supplies",
+        "classes": {
+          "00": {
+            "class_name": "Surgical instruments",
+            "commodities": {
+              "00": {
+                "commodity_name": "Scalpels"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

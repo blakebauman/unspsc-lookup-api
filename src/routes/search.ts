@@ -8,7 +8,7 @@ import db from "../db";
 import SearchService from "../services/searchService";
 import { HTTPException } from "hono/http-exception";
 
-const LATEST_UNSPSC_VERSION = "26.0801";
+const LATEST_UNSPSC_VERSION = "17.1001";
 
 // List of supported versions (could also be fetched dynamically from the database)
 const SUPPORTED_VERSIONS = [
@@ -99,7 +99,7 @@ searchRoutes.get("/code", async (c: Context) => {
   const offset = (Number(page) - 1) * Number(pageSize);
   const selectedVersion = version ?? LATEST_UNSPSC_VERSION;
 
-  const result = await c.var.searchService.getByNumber(
+  const result = await c.var.searchService.getUnspscCodesByQuery(
     c,
     Number(query),
     selectedVersion,
@@ -119,14 +119,14 @@ searchRoutes.get("/code", async (c: Context) => {
   });
 });
 
-// Search by code name
-searchRoutes.get("/name", async (c: Context) => {
+// Search by code unspsc
+searchRoutes.get("/", async (c: Context) => {
   const { query, version, page, pageSize } = searchSchema.parse(c.req.query());
-  console.log(`Received request to search for name: ${query}`);
+  console.log(`Received request to search for unspsc: ${query}`);
   const offset = (Number(page) - 1) * Number(pageSize);
   const selectedVersion = version ?? LATEST_UNSPSC_VERSION;
 
-  const result = await c.var.searchService.getByName(
+  const result = await c.var.searchService.getUnspscCodesByQuery(
     c,
     query,
     selectedVersion,
@@ -144,6 +144,118 @@ searchRoutes.get("/name", async (c: Context) => {
     pageSize: pageSize,
     total: result.length,
   });
+});
+
+// Fetch UNSPSC codes in a hierarchical structure with pagination and filtering
+searchRoutes.get("/hierarchy", async (c) => {
+  try {
+    const {
+      version,
+      segment,
+      family,
+      classCode,
+      limit = 50,
+      offset = 0,
+    } = c.req.query();
+
+    // if (!segment && !family && !classCode) {
+    //   throw new Error(
+    //     "At least one of segment, family, or classCode must be specified."
+    //   );
+    // }
+
+    const selectedVersion = version ?? LATEST_UNSPSC_VERSION;
+
+    const result = await c.var.searchService.getUnspscCodesHierarchy(
+      c,
+      selectedVersion,
+      segment,
+      family,
+      classCode,
+      limit,
+      offset
+    );
+
+    console.log(result);
+
+    if (!result.length) {
+      return c.json(
+        { message: "No UNSPSC codes found for the specified parameters" },
+        404
+      );
+    }
+
+    // Build hierarchical view
+    const hierarchy: { [key: string]: any } = {};
+
+    result.forEach(
+      ({
+        unspsc_codes: {
+          segment,
+          segment_name,
+          family,
+          family_name,
+          class: classCode,
+          class_name,
+          commodity,
+          commodity_name,
+        },
+      }: {
+        unspsc_codes: {
+          segment: string;
+          segment_name: string;
+          family: string;
+          family_name: string;
+          class: string;
+          class_name: string;
+          commodity: string;
+          commodity_name: string;
+        };
+      }) => {
+        console.log(segment, family, classCode, commodity);
+        // Segment level
+        if (!hierarchy[segment]) {
+          hierarchy[segment] = {
+            segment_name,
+            families: {},
+          };
+        }
+
+        // Family level under Segment
+        if (!hierarchy[segment].families[family]) {
+          hierarchy[segment].families[family] = {
+            family_name,
+            classes: {},
+          };
+        }
+
+        // Class level under Family
+        if (!hierarchy[segment].families[family].classes[classCode]) {
+          hierarchy[segment].families[family].classes[classCode] = {
+            class_name,
+            commodities: {},
+          };
+        }
+
+        // Commodity level under Class
+        if (
+          !hierarchy[segment].families[family].classes[classCode].commodities[
+            commodity
+          ]
+        ) {
+          hierarchy[segment].families[family].classes[classCode].commodities[
+            commodity
+          ] = {
+            commodity_name,
+          };
+        }
+      }
+    );
+
+    return c.json({ hierarchy, limit: limit, offset: offset }, 200);
+  } catch (err) {
+    return c.json({ error: (err as Error).message }, 400);
+  }
 });
 
 // Fetch distinct versions from the unspsc_versions table
