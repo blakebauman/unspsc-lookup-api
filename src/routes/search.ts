@@ -1,5 +1,5 @@
 import { Context, Hono } from "hono";
-import { z } from "zod";
+import { number, z } from "zod";
 import { like, or, eq, and } from "drizzle-orm";
 
 import type { Bindings, Variables } from "../../env";
@@ -50,7 +50,7 @@ const searchSchema = z.object({
   query: z.string().min(1),
   version: z.string().optional(),
   page: z.number().min(1).default(1),
-  pageSize: z.number().min(1).max(100).default(20),
+  pageSize: z.number().min(1).max(100).default(40),
 });
 
 // Search routes
@@ -86,39 +86,6 @@ searchRoutes.use(async (c, next) => {
   await next();
 });
 
-// Search by code number
-searchRoutes.get("/code", async (c: Context) => {
-  const validation = searchCodeSchema.safeParse(c.req.query());
-  if (!validation.success) {
-    return c.json({ error: validation.error.message }, 400);
-  }
-
-  const { query, version, page, pageSize } = c.req.query();
-  console.log(`Received request to search for code: ${query}`);
-
-  const offset = (Number(page) - 1) * Number(pageSize);
-  const selectedVersion = version ?? LATEST_UNSPSC_VERSION;
-
-  const result = await c.var.searchService.getUnspscCodesByQuery(
-    c,
-    Number(query),
-    selectedVersion,
-    pageSize,
-    offset
-  );
-
-  if (result.length === 0) {
-    return c.json({ message: "No results found" }, 404);
-  }
-
-  return c.json({
-    data: result,
-    page: page,
-    pageSize: pageSize,
-    total: result.length,
-  });
-});
-
 // Search by code unspsc
 searchRoutes.get("/", async (c: Context) => {
   const { query, version, page, pageSize } = searchSchema.parse(c.req.query());
@@ -130,8 +97,8 @@ searchRoutes.get("/", async (c: Context) => {
     c,
     query,
     selectedVersion,
-    pageSize,
-    offset
+    Number(pageSize),
+    Number(offset)
   );
 
   if (result.length === 0) {
@@ -192,31 +159,30 @@ searchRoutes.get("/hierarchy", async (c) => {
       ({
         unspsc_codes: {
           segment,
-          segment_name,
+          segmentName,
           family,
-          family_name,
+          familyName,
           class: classCode,
-          class_name,
+          className,
           commodity,
-          commodity_name,
+          commodityName,
         },
       }: {
         unspsc_codes: {
           segment: string;
-          segment_name: string;
+          segmentName: string;
           family: string;
-          family_name: string;
+          familyName: string;
           class: string;
-          class_name: string;
+          className: string;
           commodity: string;
-          commodity_name: string;
+          commodityName: string;
         };
       }) => {
-        console.log(segment, family, classCode, commodity);
         // Segment level
         if (!hierarchy[segment]) {
           hierarchy[segment] = {
-            segment_name,
+            segmentName,
             families: {},
           };
         }
@@ -224,7 +190,7 @@ searchRoutes.get("/hierarchy", async (c) => {
         // Family level under Segment
         if (!hierarchy[segment].families[family]) {
           hierarchy[segment].families[family] = {
-            family_name,
+            familyName,
             classes: {},
           };
         }
@@ -232,7 +198,7 @@ searchRoutes.get("/hierarchy", async (c) => {
         // Class level under Family
         if (!hierarchy[segment].families[family].classes[classCode]) {
           hierarchy[segment].families[family].classes[classCode] = {
-            class_name,
+            className,
             commodities: {},
           };
         }
@@ -246,7 +212,7 @@ searchRoutes.get("/hierarchy", async (c) => {
           hierarchy[segment].families[family].classes[classCode].commodities[
             commodity
           ] = {
-            commodity_name,
+            commodityName,
           };
         }
       }

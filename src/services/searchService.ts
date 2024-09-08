@@ -23,8 +23,8 @@ class SearchService {
     c: Context,
     query: string,
     selectedVersion: string,
-    pageSize: string | number,
-    offset: string | number
+    pageSize: number,
+    offset: number
   ) {
     let searchQuery = c.var.db
       .select()
